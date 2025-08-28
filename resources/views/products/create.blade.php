@@ -83,6 +83,7 @@
         let products = [];
         let categories = [];
 
+        // ✅ Fetch Categories
         async function fetchCategories() {
             const res = await fetch("{{ route('categories.index') }}");
             categories = await res.json();
@@ -98,12 +99,14 @@
             });
         }
 
+        // ✅ Fetch Products
         async function fetchProducts() {
             const res = await fetch("{{ route('products.index') }}");
             products = await res.json();
             renderProducts();
         }
 
+        // ✅ Open Modal
         function openModal(mode, product = {}) {
             const modal = document.getElementById('productModal');
             const modalTitle = document.getElementById('modalTitle');
@@ -111,6 +114,9 @@
             const form = document.getElementById('productForm');
 
             modal.classList.remove('hidden');
+
+            // Clear previous error messages
+            document.querySelectorAll('.error-message').forEach(el => el.remove());
 
             if (mode === 'add') {
                 modalTitle.textContent = 'Add Product';
@@ -134,8 +140,25 @@
             document.getElementById('productModal').classList.add('hidden');
         }
 
+        // ✅ Form Submit with Validation
         document.getElementById('productForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+
+            // Clear previous error messages
+            document.querySelectorAll('.error-message').forEach(el => el.remove());
+
+            let isValid = true;
+
+            const fields = ['name', 'price', 'quantity'];
+            fields.forEach(field => {
+                const input = document.getElementById(field);
+                if (!input.value.trim()) {
+                    showError(input, `${field.charAt(0).toUpperCase() + field.slice(1)} is required`);
+                    isValid = false;
+                }
+            });
+
+            if (!isValid) return;
 
             const id = document.getElementById('productId').value;
             const formData = new FormData();
@@ -153,7 +176,9 @@
 
             await fetch(url, {
                 method: 'POST',
-                headers: {'X-CSRF-TOKEN': "{{ csrf_token() }}"},
+                headers: {
+                    'X-CSRF-TOKEN': "{{ csrf_token() }}"
+                },
                 body: formData
             });
 
@@ -161,62 +186,77 @@
             fetchProducts();
         });
 
+        // ✅ Show Error Message Below Input
+        function showError(element, message) {
+            const error = document.createElement('p');
+            error.className = 'error-message text-red-500 text-sm mt-1';
+            error.textContent = message;
+            element.parentElement.appendChild(error);
+        }
+
+        // ✅ Delete Product
         async function deleteProduct(id) {
             if (!confirm('Are you sure?')) return;
 
             await fetch(`/products/${id}`, {
                 method: 'POST',
-                headers: {'X-CSRF-TOKEN': "{{ csrf_token() }}", 'X-HTTP-Method-Override': 'DELETE'}
+                headers: {
+                    'X-CSRF-TOKEN': "{{ csrf_token() }}",
+                    'X-HTTP-Method-Override': 'DELETE'
+                }
             });
 
             fetchProducts();
         }
 
+        // ✅ Render Products Table
         function renderProducts() {
             const container = document.getElementById('product-list');
             container.innerHTML = '';
 
-            if (!products.length) return container.innerHTML =
-                '<p class="text-gray-700 dark:text-gray-200">No products found.</p>';
+            if (!products.length) {
+                return container.innerHTML = '<p class="text-gray-700 dark:text-gray-200">No products found.</p>';
+            }
 
             const table = document.createElement('table');
             table.className = "min-w-full border border-gray-500 text-left";
 
             table.innerHTML = `
-                <thead>
-                    <tr class="bg-gray-700 text-gray-200">
-                        <th class="border px-4 py-2">Image</th>
-                        <th class="border px-4 py-2">Name</th>
-                        <th class="border px-4 py-2">Category</th>
-                        <th class="border px-4 py-2">Price</th>
-                        <th class="border px-4 py-2">Quantity</th>
-                        <th class="border px-4 py-2">Discount</th>
-                        <th class="border px-4 py-2">Description</th>
-                        <th class="border px-4 py-2">Actions</th>
-                    </tr>
-                </thead>
-            `;
+            <thead>
+                <tr class="bg-gray-700 text-gray-200">
+                    <th class="border px-4 py-2">Image</th>
+                    <th class="border px-4 py-2">Name</th>
+                    <th class="border px-4 py-2">Category</th>
+                    <th class="border px-4 py-2">Price</th>
+                    <th class="border px-4 py-2">Quantity</th>
+                    <th class="border px-4 py-2">Discount</th>
+                    <th class="border px-4 py-2">Description</th>
+                    <th class="border px-4 py-2">Actions</th>
+                </tr>
+            </thead>
+        `;
 
             const tbody = document.createElement('tbody');
             products.forEach(product => {
-                const imageUrl = product.image ? `{{ asset('storage') }}/${product.image}` : 'https://via.placeholder.com/150';
+                const imageUrl = product.image ? `{{ asset('storage') }}/${product.image}` :
+                    'https://via.placeholder.com/150';
                 const categoryName = product.category_relation?.name || '';
 
                 const tr = document.createElement('tr');
                 tr.className = "bg-gray-800 text-gray-200";
                 tr.innerHTML = `
-                    <td class="border px-4 py-2"><img src="${imageUrl}" class="w-20 h-20 object-cover rounded"></td>
-                    <td class="border px-4 py-2">${product.name}</td>
-                    <td class="border px-4 py-2">${categoryName}</td>
-                    <td class="border px-4 py-2">${product.price}</td>
-                    <td class="border px-4 py-2">${product.quantity}</td>
-                    <td class="border px-4 py-2">${product.discount}%</td>
-                    <td class="border px-4 py-2">${product.description}</td>
-                    <td class="border px-4 py-2 flex gap-2">
-                        <button onclick='openModal("edit", ${JSON.stringify(product)})' class="px-2 py-1 bg-blue-500 hover:bg-yellow-600 text-white rounded">Edit</button>
-                        <button onclick='deleteProduct(${product.id})' class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded">Delete</button>
-                    </td>
-                `;
+                <td class="border px-4 py-2"><img src="${imageUrl}" class="w-20 h-20 object-cover rounded"></td>
+                <td class="border px-4 py-2">${product.name}</td>
+                <td class="border px-4 py-2">${categoryName}</td>
+                <td class="border px-4 py-2">${product.price}</td>
+                <td class="border px-4 py-2">${product.quantity}</td>
+                <td class="border px-4 py-2">${product.discount}%</td>
+                <td class="border px-4 py-2">${product.description}</td>
+                <td class="border px-4 py-2 flex gap-2">
+                    <button onclick='openModal("edit", ${JSON.stringify(product)})' class="px-2 py-1 bg-blue-500 hover:bg-yellow-600 text-white rounded">Edit</button>
+                    <button onclick='deleteProduct(${product.id})' class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded">Delete</button>
+                </td>
+            `;
                 tbody.appendChild(tr);
             });
 
@@ -227,4 +267,5 @@
         // Initial fetch
         fetchCategories().then(fetchProducts);
     </script>
+
 </x-app-layout>
